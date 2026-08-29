@@ -3,7 +3,7 @@ import { logInfo, loggerError } from '../index';
 import { Context } from 'koishi';
 import { dirname, join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
 
 /** 新版数据目录 */
 const CURRENT_DATA_DIR = ['data', 'adapter', 'adapter-bilibili-dm'] as const;
@@ -164,21 +164,32 @@ async function migrateAdapterDataInternal(ctx: Context): Promise<void>
     {
       // 新目录不存在时直接整体改名，保留原有目录结构
       await mkdir(dirname(currentRoot), { recursive: true });
-      await rename(legacyRoot, currentRoot);
-      logInfo(`旧版数据目录已迁移到: ${currentRoot}`);
+      try
+      {
+        await rename(legacyRoot, currentRoot);
+        logInfo(`旧版数据目录已迁移到: ${currentRoot}`);
+        return;
+      } catch (error)
+      {
+        // Windows 可能因目录句柄占用导致 rename 失败，改为逐文件复制兜底
+        logInfo(`目录改名失败，改用逐文件复制迁移: ${formatError(error)}`);
+      }
+    }
+
+    // 新目录已存在或改名失败时递归复制，目标已存在的同名文件不覆盖
+    const migrated = await copyDirectory(legacyRoot, currentRoot);
+    if (!migrated)
+    {
+      loggerError(`旧版数据目录存在无法自动处理的冲突，保留原目录: ${legacyRoot}`);
       return;
     }
 
-    // 新目录已存在时递归合并，目标已存在的同名文件不覆盖
-    const migrated = await mergeDirectory(legacyRoot, currentRoot);
-    if (migrated)
+    // 复制已完成；旧目录如果仍被占用，保留下来留待下次启动继续清理
+    await rm(legacyRoot, { recursive: true, force: true }).catch((error) =>
     {
-      await rm(legacyRoot, { recursive: true, force: true });
-      logInfo(`旧版数据目录已合并到: ${currentRoot}`);
-    } else
-    {
-      loggerError(`旧版数据目录存在无法自动处理的冲突，保留原目录: ${legacyRoot}`);
-    }
+      logInfo(`旧版数据目录暂时无法删除，将在下次启动继续清理: ${formatError(error)}`);
+    });
+    logInfo(`旧版数据目录已迁移到: ${currentRoot}`);
   } catch (error)
   {
     loggerError(`旧版数据目录迁移失败: `, error);
@@ -186,10 +197,10 @@ async function migrateAdapterDataInternal(ctx: Context): Promise<void>
 }
 
 /**
- * 递归合并旧目录到新目录
+ * 递归复制旧目录到新目录
  * @returns 所有条目均已处理时返回 true
  */
-async function mergeDirectory(source: string, target: string): Promise<boolean>
+async function copyDirectory(source: string, target: string): Promise<boolean>
 {
   await mkdir(target, { recursive: true });
   const entries = await readdir(source, { withFileTypes: true });
@@ -202,17 +213,13 @@ async function mergeDirectory(source: string, target: string): Promise<boolean>
 
     if (entry.isDirectory())
     {
-      if (await isDirectory(targetPath))
+      if (!existsSync(targetPath) || (await isDirectory(targetPath)))
       {
-        const handled = await mergeDirectory(sourcePath, targetPath);
+        const handled = await copyDirectory(sourcePath, targetPath);
         if (!handled)
         {
           allHandled = false;
         }
-      } else if (!existsSync(targetPath))
-      {
-        // 新目录中不存在同名路径时，直接移动整个子目录
-        await rename(sourcePath, targetPath);
       } else
       {
         loggerError(`数据迁移冲突，跳过目录: ${sourcePath}`);
@@ -222,8 +229,8 @@ async function mergeDirectory(source: string, target: string): Promise<boolean>
     {
       if (!existsSync(targetPath))
       {
-        await rename(sourcePath, targetPath);
-      } else if (!await isDirectory(targetPath))
+        await copyFile(sourcePath, targetPath);
+      } else if (!(await isDirectory(targetPath)))
       {
         // 新目录已存在同名文件时不覆盖，视为已迁移
       } else
@@ -235,6 +242,11 @@ async function mergeDirectory(source: string, target: string): Promise<boolean>
   }
 
   return allHandled;
+}
+
+function formatError(error: unknown): string
+{
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function isDirectory(target: string): Promise<boolean>
