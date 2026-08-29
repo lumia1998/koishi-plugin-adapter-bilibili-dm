@@ -10,7 +10,7 @@ import { Config } from './bot/schema';
 
 import { promises as fs, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { getDataFilePath } from './bot/utils';
+import { getDataFilePath, migrateAdapterData } from './bot/utils';
 import { registerBilibiliMediaProxyRoute } from './utils/media-proxy';
 
 export let loggerError: (message: any, ...args: any[]) => void;
@@ -287,17 +287,9 @@ export class BilibiliLauncher extends DataService<BotStatus>
   }
 }
 
-export function apply(ctx: Context, config: PluginConfig)
+export async function apply(ctx: Context, config: PluginConfig)
 {
   registerBilibiliMediaProxyRoute(ctx);
-  const serviceId = `console.services.bilibili-dm-${config.selfId}`;
-  const existingLauncher = ctx.get(serviceId) as BilibiliLauncher | undefined;
-  if (existingLauncher)
-  {
-    // 同一个 selfId 已有前端服务时，避免重复注册和重复启动机器人。
-    logger.info(`Bilibili ${config.selfId} 已存在前端服务，跳过重复初始化。`);
-    return;
-  }
 
   // 初始化全局函数
   logInfo = (message: any, ...args: any[]) =>
@@ -330,6 +322,18 @@ export function apply(ctx: Context, config: PluginConfig)
       devlogger.info(`[直播间] ${message}`, ...args);
     }
   };
+
+  // 先迁移旧版数据目录，再执行后续路径检查和机器人启动
+  await migrateAdapterData(ctx);
+
+  const serviceId = `console.services.bilibili-dm-${config.selfId}`;
+  const existingLauncher = ctx.get(serviceId) as BilibiliLauncher | undefined;
+  if (existingLauncher)
+  {
+    // 同一个 selfId 已有前端服务时，避免重复注册和重复启动机器人。
+    logger.info(`Bilibili ${config.selfId} 已存在前端服务，跳过重复初始化。`);
+    return;
+  }
 
   // 创建服务
   const service = new BilibiliService(ctx, config);

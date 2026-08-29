@@ -1,7 +1,16 @@
 // 工具函数集合
-import { logInfo } from '../index';
+import { logInfo, loggerError } from '../index';
 import { Context } from 'koishi';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+
+/** 新版数据目录 */
+const CURRENT_DATA_DIR = ['data', 'adapter', 'adapter-bilibili-dm'] as const;
+/** 旧版数据目录，用于兼容和迁移 */
+const LEGACY_DATA_DIR = ['data', 'adapter-bilibili-dm'] as const;
+/** 防止同一个 Context 并发执行重复迁移 */
+const migrationPromises = new WeakMap<Context, Promise<void>>();
 
 /**
  * 验证UID是否为有效的数字
@@ -95,11 +104,146 @@ export function filterValidBlockedUids(blockedUids: Array<{ name: string; uid: s
  */
 export function getDataFilePath(ctx: Context, selfId: string, ...subpaths: string[]): string
 {
+  const currentPath = resolve(ctx.baseDir, ...CURRENT_DATA_DIR, selfId, ...subpaths);
+  const legacyPath = resolve(ctx.baseDir, ...LEGACY_DATA_DIR, selfId, ...subpaths);
+
+  // 新目录不存在但旧文件仍存在时回退到旧路径，保证迁移失败也能读取旧数据
+  if (!existsSync(currentPath) && existsSync(legacyPath))
+  {
+    return legacyPath;
+  }
+
   if (!selfId)
   {
-    // 在没有 selfId 的情况下，直接返回基础数据目录
-    return resolve(ctx.baseDir, 'data', 'adapter-bilibili-dm');
+    // 在没有 selfId 的情况下，返回基础数据目录
+    return resolve(ctx.baseDir, ...CURRENT_DATA_DIR);
   }
   // 为每个 selfId 创建独立的子目录
-  return resolve(ctx.baseDir, 'data', 'adapter-bilibili-dm', selfId, ...subpaths);
+  return currentPath;
+}
+
+/**
+ * 将旧版数据目录迁移到新版数据目录
+ * @param ctx Koishi 上下文
+ */
+export async function migrateAdapterData(ctx: Context): Promise<void>
+{
+  const running = migrationPromises.get(ctx);
+  if (running)
+  {
+    return running;
+  }
+
+  const task = migrateAdapterDataInternal(ctx);
+  migrationPromises.set(ctx, task);
+  try
+  {
+    await task;
+  } finally
+  {
+    migrationPromises.delete(ctx);
+  }
+}
+
+async function migrateAdapterDataInternal(ctx: Context): Promise<void>
+{
+  const legacyRoot = resolve(ctx.baseDir, ...LEGACY_DATA_DIR);
+  const currentRoot = resolve(ctx.baseDir, ...CURRENT_DATA_DIR);
+
+  // 没有旧目录时无需迁移
+  if (!existsSync(legacyRoot))
+  {
+    return;
+  }
+
+  logInfo(`检测到旧版数据目录: ${legacyRoot}`);
+
+  try
+  {
+    if (!existsSync(currentRoot))
+    {
+      // 新目录不存在时直接整体改名，保留原有目录结构
+      await mkdir(dirname(currentRoot), { recursive: true });
+      await rename(legacyRoot, currentRoot);
+      logInfo(`旧版数据目录已迁移到: ${currentRoot}`);
+      return;
+    }
+
+    // 新目录已存在时递归合并，目标已存在的同名文件不覆盖
+    const migrated = await mergeDirectory(legacyRoot, currentRoot);
+    if (migrated)
+    {
+      await rm(legacyRoot, { recursive: true, force: true });
+      logInfo(`旧版数据目录已合并到: ${currentRoot}`);
+    } else
+    {
+      loggerError(`旧版数据目录存在无法自动处理的冲突，保留原目录: ${legacyRoot}`);
+    }
+  } catch (error)
+  {
+    loggerError(`旧版数据目录迁移失败: `, error);
+  }
+}
+
+/**
+ * 递归合并旧目录到新目录
+ * @returns 所有条目均已处理时返回 true
+ */
+async function mergeDirectory(source: string, target: string): Promise<boolean>
+{
+  await mkdir(target, { recursive: true });
+  const entries = await readdir(source, { withFileTypes: true });
+  let allHandled = true;
+
+  for (const entry of entries)
+  {
+    const sourcePath = join(source, entry.name);
+    const targetPath = join(target, entry.name);
+
+    if (entry.isDirectory())
+    {
+      if (await isDirectory(targetPath))
+      {
+        const handled = await mergeDirectory(sourcePath, targetPath);
+        if (!handled)
+        {
+          allHandled = false;
+        }
+      } else if (!existsSync(targetPath))
+      {
+        // 新目录中不存在同名路径时，直接移动整个子目录
+        await rename(sourcePath, targetPath);
+      } else
+      {
+        loggerError(`数据迁移冲突，跳过目录: ${sourcePath}`);
+        allHandled = false;
+      }
+    } else
+    {
+      if (!existsSync(targetPath))
+      {
+        await rename(sourcePath, targetPath);
+      } else if (!await isDirectory(targetPath))
+      {
+        // 新目录已存在同名文件时不覆盖，视为已迁移
+      } else
+      {
+        loggerError(`数据迁移冲突，跳过文件: ${sourcePath}`);
+        allHandled = false;
+      }
+    }
+  }
+
+  return allHandled;
+}
+
+async function isDirectory(target: string): Promise<boolean>
+{
+  try
+  {
+    return (await stat(target)).isDirectory();
+  } catch
+  {
+    return false;
+  }
 }
