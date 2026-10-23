@@ -1,6 +1,7 @@
 // src\bilibiliAPI\index.ts
 
 export * from './apis/types';
+export * from './apis/videoToolkit';
 export * from './internal';
 export * from './apis/dynamic';
 export * from './apis/user';

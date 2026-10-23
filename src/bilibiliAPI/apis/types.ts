@@ -1,4 +1,5 @@
 // src\bilibiliAPI\apis\types.ts
+import type { VideoToolkit } from './videoToolkit';
 
 // 基础响应接口
 export interface BilibiliResponse<T = any>
@@ -1325,7 +1326,7 @@ export interface ExternalParseResponse
 }
 
 // Internal API 接口定义
-export interface InternalInterface
+export interface InternalInterface extends VideoToolkit
 {
   // 用户关注相关
   followUser(uid: string): Promise<boolean>;

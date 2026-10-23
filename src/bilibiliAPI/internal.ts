@@ -9,6 +9,7 @@ import { LiveRoomAPI } from './apis/liveRoom';
 import { logInfo, loggerError } from './../index';
 import { LiveWebSocketManager } from './apis/liveWebSocket';
 import { VideoAPI } from './apis/video';
+import { VideoToolkitAPI, VideoCommentOptions, UserVideoOptions } from './apis/videoToolkit';
 import { BilibiliCommentMention, BilibiliCommentTarget, CommentAPI } from './apis/comment';
 import
 {
@@ -38,6 +39,7 @@ export class Internal implements InternalInterface
   private liveRoomAPI: LiveRoomAPI;
   private liveWebSocketManager: LiveWebSocketManager;
   private videoAPI: VideoAPI;
+  private videoToolkitAPI: VideoToolkitAPI;
   private commentAPI: CommentAPI;
 
   constructor(bot: BilibiliDmBot, ctx: Context)
@@ -59,6 +61,7 @@ export class Internal implements InternalInterface
 
     // 初始化 VideoAPI
     this.videoAPI = new VideoAPI(bot);
+    this.videoToolkitAPI = new VideoToolkitAPI(bot, ctx);
     this.commentAPI = new CommentAPI(bot, ctx);
 
     bot.addCleanup(() =>
@@ -96,6 +99,15 @@ export class Internal implements InternalInterface
   {
     return this.commentAPI.sendComment(channelId, content, target, mentions);
   }
+
+  getVideoSubtitle(bvid: string) { return this.videoToolkitAPI.getVideoSubtitle(bvid); }
+  getVideoComments(bvid: string, options?: VideoCommentOptions) { return this.videoToolkitAPI.getVideoComments(bvid, options); }
+  getUserVideos(uid: string, options?: UserVideoOptions) { return this.videoToolkitAPI.getUserVideos(uid, options); }
+  getRelatedVideos(bvid: string) { return this.videoToolkitAPI.getRelatedVideos(bvid); }
+  createVideoComment(bvid: string, text: string, mentions?: BilibiliCommentMention[]) { return this.videoToolkitAPI.createVideoComment(bvid, text, mentions); }
+  getFavoriteFolders() { return this.videoToolkitAPI.getFavoriteFolders(); }
+  addVideoToFavorite(bvid: string, folderId: string) { return this.videoToolkitAPI.addVideoToFavorite(bvid, folderId); }
+  getCommentVisibility(bvid: string, rpid: string, root?: string) { return this.videoToolkitAPI.getCommentVisibility(bvid, rpid, root); }
 
   // #region 用户关注相关API
 
