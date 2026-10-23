@@ -2,7 +2,7 @@
 
 import { Context, Schema, Universal } from 'koishi'
 
-// import { } from 'koishi-plugin-adapter-bilibili-dm'
+// import { } from '@lumia.wang/koishi-plugin-adapter-bilibili'
 
 export const name = 'bilibili-live-chat-demo'
 

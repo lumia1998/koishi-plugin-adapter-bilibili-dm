@@ -1,6 +1,6 @@
 // src\test\test.ts
 import { Context } from 'koishi';
-// import {  } from 'koishi-plugin-adapter-bilibili-dm'
+// import {  } from '@lumia.wang/koishi-plugin-adapter-bilibili'
 
 export function BilibiliTestPlugin(ctx: Context)
 {

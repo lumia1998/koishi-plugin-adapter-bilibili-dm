@@ -1,6 +1,6 @@
 # adapter-bilibili-dm API Demo 插件
 
-这个文件夹包含了示例插件，用于演示如何使用 `koishi-plugin-adapter-bilibili-dm` 适配器的事件功能。
+这个文件夹包含了示例插件，用于演示如何使用 `@lumia.wang/koishi-plugin-adapter-bilibili` 适配器的事件功能。
 
 希望开发者学会使用这些API捏~
 

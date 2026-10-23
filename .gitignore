@@ -17,4 +17,6 @@ tsconfig.tsbuildinfo
 *.njsproj
 *.sln
 request.md
+.publish-check/
+*.tgz
 tsconfig.tsbuildinfo

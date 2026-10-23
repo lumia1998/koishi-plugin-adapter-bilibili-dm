@@ -85,7 +85,7 @@ console.groupEnd()
 */
 
 // 插件的预期名称 包名
-const PLUGIN_NAME = 'koishi-plugin-adapter-bilibili-dm';
+const PLUGIN_NAME = '@lumia.wang/koishi-plugin-adapter-bilibili';
 
 const data = computed(() =>
 {
@@ -229,6 +229,11 @@ function getCommentType(status?: string)
 
 <style lang="scss" scoped>
 .bilibili-dm-settings {
+  // Radix Colors: gray 1/6, green 11 and black alpha 9.
+  --bili-surface: #fcfcfc;
+  --bili-border: #d9d9d9;
+  --bili-success: #218358;
+  --bili-overlay: rgba(0, 0, 0, 0.7);
   padding: 0;
   margin-top: -1rem; // 顶部间距
   margin-bottom: -1rem; // 底部间距
@@ -237,11 +242,10 @@ function getCommentType(status?: string)
     position: relative;
     display: inline-block;
     margin: 1rem 0 0.35rem;
-    border: 1px solid #eee;
+    border: 0.5px solid var(--bili-border);
     padding: 10px;
     border-radius: 8px;
-    background-color: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: var(--bili-surface);
   }
 
   .qrcode {
@@ -264,12 +268,12 @@ function getCommentType(status?: string)
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: var(--bili-overlay);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: white;
+    color: var(--bili-surface);
     border-radius: 8px;
   }
 
@@ -284,7 +288,7 @@ function getCommentType(status?: string)
     margin: 1rem 0;
 
     &.success {
-      color: #52c41a;
+      color: var(--bili-success);
     }
   }
 
@@ -294,7 +298,7 @@ function getCommentType(status?: string)
   }
 
   .relogin-button {
-    border-width: 2px;
+    border-width: 0.5px;
   }
 
   .k-progress {

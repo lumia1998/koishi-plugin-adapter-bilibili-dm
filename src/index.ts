@@ -18,7 +18,7 @@ export let loggerInfo: (message: any, ...args: any[]) => void;
 export let logInfo: (message: any, ...args: any[]) => void;
 export let loginfolive: (message: any, ...args: any[]) => void;
 
-export const name = "adapter-bilibili-dm";
+export const name = "adapter-bilibili";
 export const inject = {
   required: ["http", "i18n", "server", "logger", "console"],
   optional: ["notifier"]
@@ -33,8 +33,8 @@ const logger = new Logger(name);
 export const usage = `
 ---
 
-<p>Bilibili Direct Message Adapter for Koishi</p>
-<p>➣ <a href="https://bilibili-plugins.github.io/koishi-plugin-adapter-bilibili-dm/" target="_blank">点我查看使用说明</a></p>
+<p>Lumia Bilibili Adapter for Koishi</p>
+<p>➣ <a href="https://github.com/lumia1998/koishi-plugin-adapter-bilibili-dm#readme" target="_blank">使用说明</a></p>
 
 ---
 

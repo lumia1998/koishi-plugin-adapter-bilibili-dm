@@ -186,7 +186,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig>
       {
         let countdown = 6;
 
-        const notify = () => notifier.update(`<p>插件 adapter-bilibili-dm (ID: ${this.selfId}) 因连续轮询失败将在 ${countdown} 秒后关闭……</p><p>失败原因可能是 Cookie 失效或网络问题</p>`);
+        const notify = () => notifier.update(`<p>插件 adapter-bilibili (ID: ${this.selfId}) 因连续轮询失败将在 ${countdown} 秒后关闭……</p><p>失败原因可能是 Cookie 失效或网络问题</p>`);
 
         while (--countdown > 0)
         {

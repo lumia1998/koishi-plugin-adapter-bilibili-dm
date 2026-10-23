@@ -1,54 +1,63 @@
-# Bilibili Adapter for Koishi
+# @lumia.wang/koishi-plugin-adapter-bilibili
 
-[![npm version](https://img.shields.io/npm/v/koishi-plugin-adapter-bilibili-dm?color=blue)](https://www.npmjs.com/package/koishi-plugin-adapter-bilibili-dm) [![npm downloads](https://img.shields.io/npm/dm/koishi-plugin-adapter-bilibili-dm)](https://www.npmjs.com/package/koishi-plugin-adapter-bilibili-dm) [![platform](https://img.shields.io/badge/platform-Koishi-blueviolet)](https://koishi.chat/) [![license](https://img.shields.io/github/license/bilibili-plugins/koishi-plugin-adapter-bilibili-dm)](https://github.com/bilibili-plugins/koishi-plugin-adapter-bilibili-dm?tab=MIT-1-ov-file)
+Lumia 独立维护的 Koishi B站适配器，基于 [adapter-bilibili-dm 2.8.5](https://github.com/bilibili-plugins/koishi-plugin-adapter-bilibili-dm)（MIT）。原作者与许可证保留，详见 [NOTICE.md](NOTICE.md)。
 
-## 哔哩哔哩适配器
+保留原适配器的扫码登录、私信、评论回复、关注管理、动态和直播监听能力，并提供视频字幕、评论、UP 投稿、相关推荐、一级评论、收藏及评论可见性 API。
 
-![preview.gif](https://raw.githubusercontent.com/bilibili-plugins/koishi-plugin-adapter-bilibili-dm/refs/heads/docs/screenshot/preview.gif)
+## 安装
 
-## 快速开始
+在 Koishi 插件市场搜索 `@lumia.wang/adapter-bilibili`，或在 Koishi 项目目录执行：
 
-1. 安装插件
-2. 获取你的 Bilibili UID
-3. 在 Koishi 控制台中配置插件并启用
-4. 使用 APP 扫码登录获取认证信息
+```bash
+npm install @lumia.wang/koishi-plugin-adapter-bilibili
+```
 
-## 支持状态
+配置插件条目为 `@lumia.wang/adapter-bilibili`，填写 B站账号 UID，启用后在设置页扫码登录。
 
-| 功能     | 状态 | 说明                    |
-| -------- | ---- | ----------------------- |
-| 收发私信 | ✅    | 收发消息支持            |
-| 收发评论 | ✅    | 收发消息支持            |
-| 消息撤回 | ✅    | 撤回已发送的私信        |
-| 用户信息 | ✅    | 获取公开资料            |
-| 关注管理 | ✅    | 关注/取关操作           |
-| 动态监听 | ✅    | 监听动态、事件下发      |
-| 直播监听 | ✅    | 监听开播/下播、事件下发 |
-| 直播弹幕 | ✅    | 进入直播间、监听弹幕    |
-| 搜索功能 | ✅    | 搜索用户/视频/综合      |
+```yaml
+plugins:
+  '@lumia.wang/adapter-bilibili':
+    selfId: '你的B站UID'
+```
 
-## 文档
+从原版切换时，将原插件条目替换为上述条目，保留其他设置。账号数据目录与原版兼容，无须复制 Cookie；不要同时启用同一 UID 的两个适配器实例。
 
-详细使用说明请查看
+B站私信只推送给最后打开私信页面的客户端。机器人无法接收私信时，关闭其他客户端的私信页面，再重新启用适配器。
 
--> <https://bilibili-plugins.github.io/koishi-plugin-adapter-bilibili-dm/>
+## 视频工具 API
+
+下游插件通过已登录的 B站 Bot 调用 `bot.internal`，不需要维护另一份凭证或网络客户端。
+
+| 方法 | 功能 |
+| --- | --- |
+| `getVideoSubtitle(bvid)` | 字幕全文及语言 |
+| `getVideoComments(bvid, options?)` | 热评、最新评论或楼中楼 |
+| `getUserVideos(uid, options?)` | UP 主近期投稿 |
+| `getRelatedVideos(bvid)` | 相关推荐 |
+| `createVideoComment(bvid, text, mentions?)` | 新发一级评论，支持真正的 @ 映射 |
+| `getFavoriteFolders()` | 当前账号的收藏夹 |
+| `addVideoToFavorite(bvid, folderId)` | 收藏视频 |
+| `getCommentVisibility(bvid, rpid, root?)` | 匿名公开、仅本人可见或未查到 |
+
+这些新增接口会传递网络和 B站接口异常。无字幕返回空文本；接口错误不会伪装成无字幕。现有 `sendComment` 保持仅回复已有评论的行为，新发评论使用 `createVideoComment`。
+
+```ts
+import type { Internal } from '@lumia.wang/koishi-plugin-adapter-bilibili'
+
+const text = await bot.internal.getVideoSubtitle('BV1xx411c7mD')
+```
+
+完整签名、返回类型和可见性语义见 [API 文档](docs/video-toolkit.md)。
 
 ## 开发
 
 ```bash
-# 在koishi项目模板 克隆项目
-yarn clone bilibili-plugins/koishi-plugin-adapter-bilibili-dm
-
-# 开发模式
-yarn dev
+npm install
+npm test
+npm run build
+npm pack
 ```
 
-## 许可证
+构建包含 TypeScript 声明、Node.js 运行入口及 Koishi 控制台客户端，发布包可以直接加载。主运行环境要求 Node.js 20+。
 
-[MIT License](LICENSE)
-
-## 项目鸣谢
-
-- <https://github.com/SocialSisterYi/bilibili-API-collect>
-- <https://github.com/renmu123/biliAPI>
-- <https://github.com/xiaopeng12138/adapter-whatsapp-web/blob/master/client/settings.vue>
+本 fork 的反馈与维护：[lumia1998/koishi-plugin-adapter-bilibili-dm](https://github.com/lumia1998/koishi-plugin-adapter-bilibili-dm)。原项目的功能说明可参考其[文档](https://bilibili-plugins.github.io/koishi-plugin-adapter-bilibili-dm/)。
