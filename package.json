@@ -1,6 +1,6 @@
 {
   "name": "@lumia.wang/koishi-plugin-adapter-bilibili",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lumia maintained Bilibili adapter for Koishi, with video toolkit APIs",
   "typings": "lib/index.d.ts",
   "main": "lib/index.js",
@@ -29,7 +29,7 @@
   },
   "homepage": "https://github.com/lumia1998/koishi-plugin-adapter-bilibili-dm#readme",
   "scripts": {
-    "build": "tsc -b && node scripts/build.cjs && koishi-console build",
+    "build": "tsc -b --force && node scripts/build.cjs && koishi-console build",
     "test": "node tests/run.cjs",
     "test:package": "node scripts/smoke.cjs",
     "prepack": "npm run build",
