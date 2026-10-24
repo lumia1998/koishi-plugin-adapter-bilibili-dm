@@ -59,8 +59,24 @@ export interface FavoriteFolder
   title: string;
 }
 
+export interface VideoAudioOptions
+{
+  maxDuration?: number;
+  maxBytes?: number;
+}
+
+export interface VideoAudio
+{
+  bvid: string;
+  cid: number;
+  duration: number;
+  mime: 'audio/mp4';
+  data: Buffer;
+}
+
 export interface VideoToolkit
 {
+  getVideoAudio(bvid: string, options?: VideoAudioOptions): Promise<VideoAudio>;
   getVideoSubtitle(bvid: string): Promise<VideoSubtitle>;
   getVideoComments(bvid: string, options?: VideoCommentOptions): Promise<VideoComment[]>;
   getUserVideos(uid: string, options?: UserVideoOptions): Promise<VideoBrief[]>;
@@ -153,6 +169,42 @@ export class VideoToolkitAPI implements VideoToolkit
     // Never send the adapter's authenticated client to a subtitle CDN.
     const body = await this.ctx.http.get<{ body: { content: string; }[]; }>(url.href);
     return { bvid, cid, language: track.lan, text: body.body.map(row => row.content).join('\n') };
+  }
+
+  /** Downloads one bounded AAC track for Node-based audio processing. */
+  async getVideoAudio(bvid: string, options: VideoAudioOptions = {}): Promise<VideoAudio>
+  {
+    const maxDuration = options.maxDuration ?? 600;
+    const maxBytes = options.maxBytes ?? 32 * 1024 * 1024;
+    if (!Number.isFinite(maxDuration) || maxDuration <= 0 || maxDuration > 1800) throw new Error('Invalid audio duration limit');
+    if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 64 * 1024 * 1024) throw new Error('Invalid audio size limit');
+    const info = await this.info(bvid);
+    const cid = info.cid || info.pages?.[0]?.cid;
+    if (!cid) throw new Error('Video has no cid');
+    if (!info.duration || info.duration > maxDuration) throw new Error(`Video exceeds audio duration limit (${maxDuration}s)`);
+    const player = await this.get<{ dash?: { audio?: { id: number; codecid?: number; mimeType?: string; baseUrl?: string; base_url?: string; bandwidth?: number; }[]; }; }>(
+      '/x/player/wbi/playurl', { bvid, cid, fnval: 16, fnver: 0, fourk: 0, qn: 16 }, true,
+    );
+    const tracks = (player.dash?.audio || []).filter(track => [30216, 30232, 30280].includes(track.id) && (!track.codecid || track.codecid === 0));
+    const track = tracks.sort((a, b) => (a.bandwidth || 0) - (b.bandwidth || 0))[0];
+    if (!track) throw new Error('Video has no supported AAC audio track');
+    const url = new URL(track.baseUrl || track.base_url || '');
+    if (url.protocol !== 'https:') throw new Error('Invalid audio URL protocol');
+    // The anonymous Koishi client retains proxy support without exposing the account Cookie.
+    const stream = await this.ctx.http.get<AsyncIterable<Uint8Array>>(url.href, {
+      responseType: 'stream', timeout: 60000,
+      headers: { Referer: `https://www.bilibili.com/video/${bvid}`, 'User-Agent': 'Mozilla/5.0' },
+    });
+    const chunks: Buffer[] = [];
+    let length = 0;
+    for await (const chunk of stream)
+    {
+      length += chunk.byteLength;
+      if (length > maxBytes) throw new Error(`Audio exceeds download size limit (${maxBytes} bytes)`);
+      chunks.push(Buffer.from(chunk));
+    }
+    if (!length) throw new Error('Video audio is empty');
+    return { bvid, cid, duration: info.duration, mime: 'audio/mp4', data: Buffer.concat(chunks, length) };
   }
 
   async getVideoComments(bvid: string, options: VideoCommentOptions = {}): Promise<VideoComment[]>

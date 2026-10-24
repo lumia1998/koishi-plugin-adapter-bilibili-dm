@@ -86,7 +86,7 @@ export const Config: Schema<PluginConfig> =
       commentPollInterval: Schema.number().default(30).description('评论通知轮询间隔（单位：秒）').min(10).max(300),
       enableDynamicPolling: Schema.boolean().default(true).description('启用动态监听功能，监听关注UP主的动态更新'),
       dynamicPollInterval: Schema.number().default(30).description("动态轮询间隔时间（单位：秒）").min(10).max(300),
-      enableLivePolling: Schema.boolean().default(true).description('启用直播监听功能，监听关注UP主的直播状态变化'),
+      enableLivePolling: Schema.boolean().default(false).description('启用直播监听功能，监听关注UP主的直播状态变化'),
       livePollInterval: Schema.number().default(30).description("直播轮询间隔时间（单位：秒）").min(10).max(300),
     }).description('监听设置'),
 

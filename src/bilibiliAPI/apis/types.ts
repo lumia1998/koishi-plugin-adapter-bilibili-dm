@@ -1335,7 +1335,6 @@ export interface InternalInterface extends VideoToolkit
   getUserInfo(uid: string): Promise<any>;
   isFollowing(uid: string): Promise<boolean>;
   batchCheckFollowing(uids: string[]): Promise<Record<string, boolean>>;
-  getTokenByUid(uid: string): Promise<any | null>;
 
   // 动态相关
   getAllFollowedDynamics(offset?: string, updateBaseline?: string): Promise<DynamicItem[]>;

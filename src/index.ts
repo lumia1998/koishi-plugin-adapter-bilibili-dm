@@ -52,7 +52,6 @@ B站私信只推送至最后打开私信页面的客户端，
 ---
 `;
 
-export * from './test/test';
 export * from './bot/types';
 export * from './bilibiliAPI';
 

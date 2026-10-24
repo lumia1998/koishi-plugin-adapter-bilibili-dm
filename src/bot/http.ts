@@ -63,7 +63,7 @@ export class HttpClient
   public http: Quester;
   public isDisposed = false;
 
-  constructor(private ctx: Context, config?: { selfId?: string; }, private bot?: BilibiliDmBot)
+  constructor(private ctx: Context, config?: { selfId?: string; requestTimeout?: number; }, private bot?: BilibiliDmBot)
   {
     this.selfId = config?.selfId || 'unknown';
 
@@ -73,7 +73,7 @@ export class HttpClient
         'Referer': 'https://message.bilibili.com/',
         'Origin': 'https://message.bilibili.com',
       },
-      timeout: 10000,
+      timeout: config?.requestTimeout ?? 10000,
     });
     this.deviceId = this.generateDeviceId();
     const renmuAuth = new Auth();

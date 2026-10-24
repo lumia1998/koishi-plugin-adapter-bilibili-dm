@@ -9,9 +9,6 @@ import
   BilibiliError
 } from './types';
 
-import { existsSync, readFileSync } from 'node:fs';
-import { getDataFilePath } from '../../bot/utils';
-
 export class UserAPI
 {
   private bot: BilibiliDmBot;
@@ -310,36 +307,5 @@ export class UserAPI
     }
 
     return result;
-  }
-
-  /**
-   * 获取指定UID的登录cookie数据
-   * @param uid 登录bot的UID
-   * @returns Promise<any | null> 返回cookie数据，如果文件不存在则返回null
-   */
-  async getTokenByUid(uid: string): Promise<any | null>
-  {
-    try
-    {
-      const cookieFile = getDataFilePath(this.bot.ctx, uid, `${uid}.cookie.json`);
-
-      logInfo(`检查cookie文件: ${cookieFile}`);
-
-      if (!existsSync(cookieFile))
-      {
-        logInfo(`UID ${uid} 的cookie文件不存在: ${cookieFile}`);
-        return null;
-      }
-
-      const cookieData = readFileSync(cookieFile, 'utf8');
-      const parsedData = JSON.parse(cookieData);
-
-      logInfo(`成功读取UID ${uid} 的cookie数据，数据长度: ${cookieData.length}`);
-      return parsedData;
-    } catch (error)
-    {
-      loggerError(`读取UID ${uid} 的cookie数据时发生错误: `, error);
-      return null;
-    }
   }
 }

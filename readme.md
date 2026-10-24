@@ -1,5 +1,7 @@
 # @lumia.wang/koishi-plugin-adapter-bilibili
 
+个人使用，不推荐任何人下载。
+
 Lumia 独立维护的 Koishi B站适配器，基于 [adapter-bilibili-dm 2.8.5](https://github.com/bilibili-plugins/koishi-plugin-adapter-bilibili-dm)（MIT）。原作者与许可证保留，详见 [NOTICE.md](NOTICE.md)。
 
 保留原适配器的扫码登录、私信、评论回复、关注管理、动态和直播监听能力，并提供视频字幕、评论、UP 投稿、相关推荐、一级评论、收藏及评论可见性 API。

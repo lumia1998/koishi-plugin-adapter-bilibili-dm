@@ -141,6 +141,7 @@ export interface PluginConfig
     blockedUids: { name: string; uid: string; }[];
   };
   ignoreOfflineMessages: boolean;
+  requestTimeout: number;
   pollFailureThreshold: number;
   pollAutoShutdownThreshold: number;
   enableDynamicPolling: boolean;

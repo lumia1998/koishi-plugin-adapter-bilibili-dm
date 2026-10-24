@@ -9,7 +9,7 @@ import { LiveRoomAPI } from './apis/liveRoom';
 import { logInfo, loggerError } from './../index';
 import { LiveWebSocketManager } from './apis/liveWebSocket';
 import { VideoAPI } from './apis/video';
-import { VideoToolkitAPI, VideoCommentOptions, UserVideoOptions } from './apis/videoToolkit';
+import { VideoToolkitAPI, VideoCommentOptions, UserVideoOptions, VideoAudioOptions } from './apis/videoToolkit';
 import { BilibiliCommentMention, BilibiliCommentTarget, CommentAPI } from './apis/comment';
 import
 {
@@ -101,6 +101,7 @@ export class Internal implements InternalInterface
   }
 
   getVideoSubtitle(bvid: string) { return this.videoToolkitAPI.getVideoSubtitle(bvid); }
+  getVideoAudio(bvid: string, options?: VideoAudioOptions) { return this.videoToolkitAPI.getVideoAudio(bvid, options); }
   getVideoComments(bvid: string, options?: VideoCommentOptions) { return this.videoToolkitAPI.getVideoComments(bvid, options); }
   getUserVideos(uid: string, options?: UserVideoOptions) { return this.videoToolkitAPI.getUserVideos(uid, options); }
   getRelatedVideos(bvid: string) { return this.videoToolkitAPI.getRelatedVideos(bvid); }
@@ -169,16 +170,6 @@ export class Internal implements InternalInterface
   async batchCheckFollowing(uids: string[]): Promise<Record<string, boolean>>
   {
     return this.userAPI.batchCheckFollowing(uids);
-  }
-
-  /**
-   * 获取指定UID的登录cookie数据
-   * @param uid 用户UID
-   * @returns Promise<any | null> 返回cookie数据，如果文件不存在则返回null
-   */
-  async getTokenByUid(uid: string): Promise<any | null>
-  {
-    return this.userAPI.getTokenByUid(uid);
   }
 
   // #region 动态相关API

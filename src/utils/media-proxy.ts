@@ -5,18 +5,36 @@ import { Readable } from 'node:stream';
 const MEDIA_PROXY_ROUTE = '/adapter/bilibili-dm/proxy/avatar';
 const MEDIA_PROXY_REFERER = 'https://www.bilibili.com/';
 const MEDIA_PROXY_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+// 仅允许代理 B站图片/头像 CDN 域名，防止代理路由被用作 SSRF 跳板。
+const ALLOWED_HOST_SUFFIXES = ['.hdslb.com', '.biliimg.com', '.bilibili.com'];
+const MAX_REDIRECTS = 3;
 const registeredContexts = new WeakSet<Context>();
 
-function isValidUrl(url: string): boolean
+function parseUrl(url: string): URL | null
 {
   try
   {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed;
   } catch
   {
-    return false;
+    return null;
   }
+}
+
+function isValidUrl(url: string): boolean
+{
+  return parseUrl(url) !== null;
+}
+
+function isAllowedHost(url: string): boolean
+{
+  const parsed = parseUrl(url);
+  if (!parsed) return false;
+  const hostname = parsed.hostname.toLowerCase();
+  return ALLOWED_HOST_SUFFIXES.some((suffix) =>
+    hostname === suffix.slice(1) || hostname.endsWith(suffix));
 }
 
 function getServerBaseUrl(ctx: Context): string
@@ -58,6 +76,13 @@ export function registerBilibiliMediaProxyRoute(ctx: Context): void
       return;
     }
 
+    if (!isAllowedHost(rawUrl))
+    {
+      koaCtx.status = 403;
+      koaCtx.body = 'avatar host not allowed';
+      return;
+    }
+
     const controller = new AbortController();
     const abortRequest = () => controller.abort();
     koaCtx.req.once('aborted', abortRequest);
@@ -65,15 +90,47 @@ export function registerBilibiliMediaProxyRoute(ctx: Context): void
 
     try
     {
-      const response = await fetch(rawUrl, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          referer: MEDIA_PROXY_REFERER,
-          'user-agent': MEDIA_PROXY_USER_AGENT,
-          accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        },
-      });
+      // 手动跟随重定向，确保每一跳都经过白名单校验。
+      let currentUrl = rawUrl;
+      let response: Response | null = null;
+      for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects++)
+      {
+        response = await fetch(currentUrl, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: controller.signal,
+          headers: {
+            referer: MEDIA_PROXY_REFERER,
+            'user-agent': MEDIA_PROXY_USER_AGENT,
+            accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          },
+        });
+
+        if (response.status >= 300 && response.status < 400)
+        {
+          const location = response.headers.get('location');
+          await response.body?.cancel();
+          response = null;
+          if (!location) throw new Error('redirect without location');
+          const nextUrl = new URL(location, currentUrl).toString();
+          if (!isAllowedHost(nextUrl))
+          {
+            koaCtx.status = 403;
+            koaCtx.body = 'avatar redirect host not allowed';
+            return;
+          }
+          currentUrl = nextUrl;
+          continue;
+        }
+        break;
+      }
+
+      if (!response)
+      {
+        koaCtx.status = 502;
+        koaCtx.body = 'failed to proxy avatar: too many redirects';
+        return;
+      }
 
       if (!response.ok)
       {

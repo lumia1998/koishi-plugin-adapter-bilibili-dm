@@ -5,6 +5,7 @@ Other plugins can use these methods on an authenticated `bot.internal` without m
 | Method | Result |
 | --- | --- |
 | `getVideoSubtitle(bvid)` | `{ bvid, cid, language, text }`; `text` is empty when no subtitle track exists |
+| `getVideoAudio(bvid, { maxDuration?, maxBytes? })` | Since 0.1.2: `{ bvid, cid, duration, mime: 'audio/mp4', data: Buffer }` for the first part's AAC track |
 | `getVideoComments(bvid, options?)` | Normalized comments with string IDs, text, author, likes and mention presence |
 | `getUserVideos(uid, { days?, pages? })` | Recent submissions, ordered by publication time |
 | `getRelatedVideos(bvid)` | Related videos as `VideoBrief[]` |
@@ -15,6 +16,7 @@ Other plugins can use these methods on an authenticated `bot.internal` without m
 
 `getVideoComments` accepts `limit` (1–60), `root` (thread root ID), `sort` (`hot` or `time`), and `anonymous`.
 `getUserVideos` accepts `days` (1–90, default 7) and `pages` (1–5, default 2).
+`getVideoAudio` defaults to 600 seconds and 32 MiB. Callers may choose smaller limits, up to 1800 seconds and 64 MiB. Invalid limits, excessive duration, an unavailable AAC track, empty downloads and excessive download size throw errors. Interrupted/oversized streams are closed. Audio downloads use the context HTTP client without the adapter Cookie, while playback URL requests reuse the account and WBI signature. No external downloader or media process is started.
 Mention objects are `{ id: 'numeric UID', name: 'exact nickname' }`; include the matching `@nickname` in the text. IDs should be passed as strings.
 
 These new APIs propagate request failures and Bilibili error codes instead of treating them as empty content. A missing comment receipt does not trigger a retry. Existing `sendComment` behavior is unchanged: it remains a reply-only API for received comment targets.

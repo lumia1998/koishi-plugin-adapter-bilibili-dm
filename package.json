@@ -1,7 +1,7 @@
 {
   "name": "@lumia.wang/koishi-plugin-adapter-bilibili",
-  "version": "0.1.1",
-  "description": "Lumia maintained Bilibili adapter for Koishi, with video toolkit APIs",
+  "version": "0.1.4",
+  "description": "个人使用，不推荐任何人下载",
   "typings": "lib/index.d.ts",
   "main": "lib/index.js",
   "files": [
@@ -13,7 +13,9 @@
     "NOTICE.md"
   ],
   "license": "MIT",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "author": "leafingxyz <2596628651@qq.com>",
   "contributors": [
     "shangxue <1919892171@qq.com>",
@@ -46,19 +48,22 @@
   ],
   "koishi": {
     "description": {
-      "es": "Adaptador de Bilibili para Koishi",
-      "fr": "Adaptateur Bilibili pour Koishi",
-      "ja": "Koishi Bilibili アダプター",
-      "de": "Bilibili-Adapter für Koishi",
-      "ru": "Адаптер Bilibili для Koishi",
-      "en": "Lumia Bilibili adapter with video toolkit APIs",
-      "zh": "Lumia 维护的哔哩哔哩适配器，支持私信、评论、字幕、投稿和收藏 API"
+      "es": "Solo para uso personal. No se recomienda su descarga.",
+      "fr": "Usage personnel uniquement. Téléchargement déconseillé.",
+      "ja": "個人使用専用です。ダウンロードは推奨しません。",
+      "de": "Nur für den persönlichen Gebrauch. Download nicht empfohlen.",
+      "ru": "Только для личного использования. Скачивание не рекомендуется.",
+      "en": "For personal use only. Not recommended for anyone to download.",
+      "zh": "个人使用，不推荐任何人下载"
     },
     "preview": true,
     "hidden": false,
-    "service": { }
+    "service": {}
   },
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "peerDependencies": {
     "koishi": "^4.16.0"
   },

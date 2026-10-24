@@ -13,11 +13,6 @@ import { shouldBlockMessage } from './utils';
 import type { BilibiliService } from './service';
 
 declare module 'koishi' {
-  interface Context
-  {
-    internal: Internal;
-  }
-
   interface Events
   {
     'bilibili/live'(data: {
@@ -511,7 +506,7 @@ export class BilibiliDmBot extends Bot<Context, PluginConfig>
         logInfo(`关闭过程中，跳过轮询。`);
         return;
       }
-      loggerError(`轮询过程中发生错误: % o`, error);
+      loggerError(`轮询过程中发生错误: %o`, error);
       // 轮询异常，也算作失败
       this.handlePollFailure();
     }

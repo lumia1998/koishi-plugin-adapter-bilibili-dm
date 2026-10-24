@@ -5,7 +5,7 @@ import type { BilibiliDmBot } from '../src/bot/bot';
 import { VideoToolkitAPI } from '../src/bilibiliAPI/apis/videoToolkit';
 
 const bv = 'BV1xx411c7mD';
-const info = { bvid: bv, aid: 123, cid: 456 };
+const info = { bvid: bv, aid: 123, cid: 456, duration: 120 };
 const reply = {
   rpid: 1, rpid_str: '987654321987654321', root: 0, parent: 0,
   member: { mid: '42', uname: 'viewer' }, content: { message: '@friend 请你吃', members: [{}] }, like: 5,
@@ -13,20 +13,27 @@ const reply = {
 
 function fixture()
 {
-  const calls: { url: string; params?: Record<string, unknown>; anonymous: boolean; body?: string; }[] = [];
+  const calls: { url: string; params?: Record<string, unknown>; anonymous: boolean; body?: string; headers?: Record<string, string>; }[] = [];
+  let audioTracks = [{ id: 30216, bandwidth: 64000, baseUrl: 'https://cdn.example/audio' }];
+  let audioClosed = false;
   let tracks = [{ lan: 'en', subtitle_url: '//cdn.example/en' }, { lan: 'ai-zh', subtitle_url: '//cdn.example/zh' }];
   let authReplies = [reply], anonReplies = [reply];
   let code = 0;
   let postData: unknown = { rpid_str: '987654321987654321' };
   let page = 0;
   const signed: Record<string, unknown>[] = [];
-  const get = (anonymous: boolean) => async (url: string, options: { params?: Record<string, unknown>; } = {}) =>
+  const get = (anonymous: boolean) => async (url: string, options: { params?: Record<string, unknown>; headers?: Record<string, string>; } = {}) =>
   {
-    calls.push({ url, params: options.params, anonymous });
+    calls.push({ url, params: options.params, anonymous, headers: options.headers });
+    if (url.endsWith('/audio')) return (async function* () {
+      try { yield Buffer.from('first'); yield Buffer.from('second'); }
+      finally { audioClosed = true; }
+    })();
     if (url.startsWith('https://cdn.example/')) return { body: [{ content: '原文' }] };
     if (code) return { code, message: 'blocked' };
     let data: unknown;
     if (url.endsWith('/view')) data = info;
+    else if (url.endsWith('/playurl')) data = { dash: { audio: audioTracks } };
     else if (url.endsWith('/v2') && url.includes('/player/')) data = { subtitle: { subtitles: tracks } };
     else if (url.includes('/reply/')) data = { replies: anonymous ? anonReplies : authReplies, cursor: { is_end: true, next: ++page } };
     else if (url.endsWith('/arc/search')) data = { list: { vlist: [
@@ -49,6 +56,8 @@ function fixture()
   return {
     api: new VideoToolkitAPI(bot, ctx), calls, signed,
     tracks: (value: typeof tracks) => { tracks = value; },
+    audioTracks: (value: typeof audioTracks) => { audioTracks = value; },
+    audioClosed: () => audioClosed,
     replies: (auth: typeof authReplies, anon: typeof anonReplies) => { authReplies = auth; anonReplies = anon; },
     error: (value: number) => { code = value; }, post: (value: unknown) => { postData = value; },
   };
@@ -62,6 +71,40 @@ test('subtitle uses adapter WBI and anonymous CDN client, preferring Chinese', a
   assert.equal(f.calls.at(-1)?.url, 'https://cdn.example/zh');
   assert.equal(f.calls.at(-1)?.anonymous, true);
   assert.equal(f.calls.find(c => c.url.includes('/player/'))?.params?.w_rid, 'signature');
+});
+
+test('audio uses adapter signing and downloads AAC without account cookies', async () =>
+{
+  const f = fixture();
+  const result = await f.api.getVideoAudio(bv);
+  assert.equal(result.data.toString(), 'firstsecond');
+  assert.equal(result.mime, 'audio/mp4');
+  assert.equal(result.duration, 120);
+  assert.equal(f.calls.at(-1)?.anonymous, true);
+  assert.equal(f.calls.at(-1)?.headers?.Cookie, undefined);
+  assert.equal(f.signed[0].bvid, bv);
+  assert.equal(f.calls.find(call => call.url.endsWith('/playurl'))?.params?.fnval, 16);
+});
+
+test('audio duration and size limits stop work and close the download iterator', async () =>
+{
+  const f = fixture();
+  await assert.rejects(f.api.getVideoAudio(bv, { maxDuration: 30 }), /duration limit/);
+  assert.equal(f.calls.length, 1);
+  await assert.rejects(f.api.getVideoAudio(bv, { maxBytes: 6 }), /size limit/);
+  assert.equal(f.audioClosed(), true);
+});
+
+test('audio rejects invalid limits, unsupported tracks and unsafe protocols', async () =>
+{
+  const f = fixture();
+  await assert.rejects(f.api.getVideoAudio(bv, { maxDuration: Infinity }), /duration limit/);
+  await assert.rejects(f.api.getVideoAudio(bv, { maxBytes: 0 }), /size limit/);
+  assert.equal(f.calls.length, 0);
+  f.audioTracks([]);
+  await assert.rejects(f.api.getVideoAudio(bv), /supported AAC/);
+  f.audioTracks([{ id: 30216, bandwidth: 64000, baseUrl: 'http://cdn.example/audio' }]);
+  await assert.rejects(f.api.getVideoAudio(bv), /URL protocol/);
 });
 test('no subtitle is empty, upstream errors are thrown with their code', async () =>
 {
