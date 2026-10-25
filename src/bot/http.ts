@@ -437,6 +437,26 @@ export class HttpClient
         return null;
       }
 
+      // /x/space/wbi/acc/info 风控较严，优先使用无需 wbi 签名的名片接口
+      try
+      {
+        const card = await this.http.get<BiliApiResponse<{ card: { name: string; face: string; }; }>>(
+          'https://api.bilibili.com/x/web-interface/card',
+          {
+            params: { mid: uid },
+            headers: { 'Referer': `https://space.bilibili.com/${uid}/` },
+          }
+        );
+        if (card.code === 0 && card.data?.card?.name)
+        {
+          return { nickname: card.data.card.name, avatar: card.data.card.face };
+        }
+        loggerError(`名片接口获取用户 ${uid} 信息失败，回退到空间接口: `, card);
+      } catch (error)
+      {
+        loggerError(`名片接口获取用户 ${uid} 信息失败，回退到空间接口: `, error);
+      }
+
       const res = await this.getRenmuClient().user.getUserInfo(uid, true);
       return { nickname: res.name, avatar: res.face };
     }, `获取B站用户${userId} 信息时发生网络错误`, null);
