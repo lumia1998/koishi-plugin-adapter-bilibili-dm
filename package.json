@@ -1,6 +1,6 @@
 {
   "name": "@lumia.wang/koishi-plugin-adapter-bilibili",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "个人使用，不推荐任何人下载",
   "typings": "lib/index.d.ts",
   "main": "lib/index.js",
